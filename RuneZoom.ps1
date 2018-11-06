@@ -55,14 +55,14 @@ function Main
 
     # Set scaling to 150%.
     Set-DPIScaling -MonitorID $MonitorID -ScalingLevel 2
-    Restart-VideoDriver -GPUID $GPUName
+    Restart-VideoDriver -GPUName $GPUName
 
     # Launch game and wait until it is closed.
     Start-Process -FilePath $LauncherPath -ArgumentList "oldschool" -Wait
 
     # Set scaling to 100%.
     Set-DPIScaling -MonitorID $MonitorID -ScalingLevel 0
-    Restart-VideoDriver -GPUID $GPUName
+    Restart-VideoDriver -GPUName $GPUName
 }
 
 Main

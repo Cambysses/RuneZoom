@@ -1,27 +1,39 @@
-﻿# VARIABLES
+﻿# THIS WILL ONLY WORK ON WINDOWS 10 #
 
-# You can find this in regedit under HKCU\Control Panel\Desktop\PerMonitorSettings
+# You can find this in regedit under HKCU\Control Panel\Desktop\PerMonitorSettings.
+# This may not appear unless you have already modified your DPI scaling manually.
 $MonitorID = "ACR0319LX2AA0024210_28_07DE_87^6F8C854534D327DB95D7BCD42DFDEE8C" 
 
-# You can find this with the PowerShell cmdlet Get-PnPDevice
-$GPUID = "NVIDIA GeForce GTX 970"
-
 # Location on your computer of JagexLauncher.exe
-$EXEPath = "C:\Users\Bill\jagexcache\jagexlauncher\bin\JagexLauncher.exe" 
+$LauncherPath = "C:\Users\Bill\jagexcache\jagexlauncher\bin\JagexLauncher.exe" 
 
-function Refresh-VideoDriver
+function Get-VideoCard 
+{    
+    $VideoDevices = Get-PnpDevice -Class Display
+
+    if ($VideoDevices.Count -gt 1)
+    {
+        return $VideoDevices[0].Name
+    } 
+    else
+    {
+        return $VideoDevices.Name 
+    }
+}
+
+function Restart-VideoDriver
 {
     param
     (
-        [Parameter(Mandatory)][string]$GPUID
+        [Parameter(Mandatory)][string]$GPUName
     )
 
     # Enables then disables GPU driver.
-    Get-PnpDevice -FriendlyName $GPUID | Disable-PnpDevice -Confirm:$False
-    Get-PnpDevice -FriendlyName $GPUID | Enable-PnpDevice -Confirm:$False
+    Get-PnpDevice -FriendlyName $GPUName | Disable-PnpDevice -Confirm:$False
+    Get-PnpDevice -FriendlyName $GPUName | Enable-PnpDevice -Confirm:$False
 }
 
-function Adjust-DPIScaling
+function Set-DPIScaling
 {
     param
     (
@@ -29,41 +41,28 @@ function Adjust-DPIScaling
         [Parameter(Mandatory)][int]$ScalingLevel
     )
 
-    <#
-        Scaling levels:
-
-        0 = 100%
-        1 = 125%
-        2 = 150%
-        3 = 175%
-    #>
+    # The scaling integer can differ depending on monitor. 
+    # For me, 0 is 100% and 2 is 150%. 
+    # But you may need to play around with this.
 
     Set-ItemProperty -Path "HKCU:Control Panel\Desktop\PerMonitorSettings\$MonitorID" -Name "DpiValue" -Value $ScalingLevel
 }
 
 function Main
 {
+    # Gets video card name.
+    $GPUName = Get-VideoCard
+
     # Set scaling to 150%.
-    Adjust-DPIScaling -MonitorID $MonitorID -ScalingLevel 2
+    Set-DPIScaling -MonitorID $MonitorID -ScalingLevel 2
+    Restart-VideoDriver -GPUID $GPUName
 
-    # Restart device driver.
-    Refresh-VideoDriver -GPUID $GPUID
-
-    # Launch game.
-    Start-Process -FilePath $EXEPath -ArgumentList "oldschool"
-    Start-Sleep 1
-
-    # Wait for game to exit.
-    while(Get-Process -Name "JagexLauncher" -ErrorAction SilentlyContinue)
-    {
-        Start-Sleep 1
-    }
+    # Launch game and wait until it is closed.
+    Start-Process -FilePath $LauncherPath -ArgumentList "oldschool" -Wait
 
     # Set scaling to 100%.
-    Adjust-DPIScaling -MonitorID $MonitorID -ScalingLevel 0
-
-    # Restart device driver.
-    Refresh-VideoDriver -GPUID $GPUID
+    Set-DPIScaling -MonitorID $MonitorID -ScalingLevel 0
+    Restart-VideoDriver -GPUID $GPUName
 }
 
 Main
